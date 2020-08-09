@@ -8,14 +8,14 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <androidx.viewpager.widget.ViewPager
+        <androidx.viewpager2.widget.ViewPager2
             android:layout_width="match_parent"
             android:id="@+id/topWare"
             android:layout_height="0dp"
             android:background="#ff0000"
             android:layout_weight="1"/>
 
-        <androidx.viewpager.widget.ViewPager
+        <androidx.viewpager2.widget.ViewPager2
             android:layout_width="match_parent"
             android:id="@+id/bottomWare"
             android:layout_height="0dp"
@@ -45,7 +45,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center|end"
-        android:src="@drawable/ic_like_active"
+        android:src="@drawable/ic_like_inactive"
         android:tint="#ff0000"
         android:layout_margin="16dp" />
 
