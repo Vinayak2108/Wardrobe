@@ -36,4 +36,8 @@ class Repo(context: Context) {
         return db.getOutFit().getAll()
     }
 
+    fun deleteOutFit(outfit: Outfit) {
+        db.getOutFit().deleteOutFit(outfit)
+    }
+
 }

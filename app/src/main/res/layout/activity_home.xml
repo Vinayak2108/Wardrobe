@@ -12,14 +12,17 @@
             android:layout_width="match_parent"
             android:id="@+id/topWare"
             android:layout_height="0dp"
-            android:background="#ff0000"
             android:layout_weight="1"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#ddd"/>
 
         <androidx.viewpager2.widget.ViewPager2
             android:layout_width="match_parent"
             android:id="@+id/bottomWare"
             android:layout_height="0dp"
-            android:background="#00ff00"
             android:layout_weight="1"/>
 
     </LinearLayout>

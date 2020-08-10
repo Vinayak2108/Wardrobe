@@ -8,23 +8,31 @@ import `in`.vrkhedkr.wardrobe.constant.WareType.TOP
 import `in`.vrkhedkr.wardrobe.databinding.ActivityHomeBinding
 import `in`.vrkhedkr.wardrobe.model.Ware
 import `in`.vrkhedkr.wardrobe.viewmodel.HomeViewModel
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.widget.ViewPager2
+import kotlinx.android.synthetic.main.activity_home.*
+import kotlinx.coroutines.NonCancellable.cancel
 import java.io.File
 import java.io.FileOutputStream
 import java.security.AccessController.getContext
@@ -33,6 +41,8 @@ const val TOP_WARE_CAMERA = 101
 const val BOTTOM_WARE_CAMERA = 102
 const val TOP_WARE_GALLERY = 103
 const val BOTTOM_WARE_GALLERY = 104
+
+const val PERMISSION_CAMERA = 105
 
 class Home : AppCompatActivity() {
 
@@ -64,7 +74,11 @@ class Home : AppCompatActivity() {
         })
 
         binder.addFavourite.setOnClickListener {
-            model.saveOutfitCombination(binder.topWare.currentItem,binder.bottomWare.currentItem)
+            if(model.checkCurrentOutFitPresent(binder.topWare.currentItem,binder.bottomWare.currentItem)){
+                model.deleteOutFitCombination(binder.topWare.currentItem,binder.bottomWare.currentItem)
+            }else{
+                model.saveOutfitCombination(binder.topWare.currentItem,binder.bottomWare.currentItem)
+            }
         }
 
         binder.bottomWare.registerOnPageChangeCallback(object:ViewPager2.OnPageChangeCallback(){
@@ -81,13 +95,24 @@ class Home : AppCompatActivity() {
             }
         })
 
+        binder.shuffle.setOnClickListener {
+            model.setRandomOutFit()
+        }
+
+        model.randomOutFitIndex.observe(this, Observer {
+            if(it != null) {
+                topWare.setCurrentItem(it.first, true)
+                bottomWare.setCurrentItem(it.second, true)
+            }
+        })
+
     }
 
     fun checkCurrentPair(){
         if(model.checkCurrentOutFitPresent(binder.topWare.currentItem,binder.bottomWare.currentItem)){
-            binder.addFavourite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_like_active));
+            binder.addFavourite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_like_active))
         }else{
-            binder.addFavourite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_like_inactive));
+            binder.addFavourite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_like_inactive))
         }
     }
 
@@ -112,9 +137,60 @@ class Home : AppCompatActivity() {
     }
 
     private fun captureWareUsingCamera(type:WareType){
-        val code = if(type == TOP) TOP_WARE_CAMERA else BOTTOM_WARE_CAMERA
-        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        startActivityForResult(cameraIntent,code)
+        if(checkCameraPermission()) {
+            val code = if (type == TOP) TOP_WARE_CAMERA else BOTTOM_WARE_CAMERA
+            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            startActivityForResult(cameraIntent, code)
+        }else{
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA,
+                Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE), PERMISSION_CAMERA)
+        }
+    }
+
+    private fun checkCameraPermission():Boolean{
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            (checkSelfPermission(android.Manifest.permission.CAMERA) ==
+                    PackageManager.PERMISSION_GRANTED /*&& checkSelfPermission(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED && checkSelfPermission(
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED*/)
+        } else {
+            return true
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_CAMERA -> if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                /*&& grantResults[1] == PackageManager.PERMISSION_GRANTED && grantResults[2] == PackageManager.PERMISSION_GRANTED */) {
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) ||
+                        !shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) ||
+                        !shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+
+                        showMessageOKCancel(getString(R.string.allow_permissions),
+                            DialogInterface.OnClickListener { _: DialogInterface?, _: Int ->
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                val uri = Uri.fromParts("package", this.packageName, null)
+                                intent.data = uri
+                                startActivity(intent)
+                            })
+
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showMessageOKCancel(message: String, okListener: DialogInterface.OnClickListener) {
+        androidx.appcompat.app.AlertDialog.Builder(this, R.style.dialog)
+            .setMessage(message)
+            .setPositiveButton(getString(R.string.button_ok), okListener)
+            .setNegativeButton(getString(R.string.cancel), null)
+            .create()
+            .show()
     }
 
     private fun getWareFromGallery(type:WareType){

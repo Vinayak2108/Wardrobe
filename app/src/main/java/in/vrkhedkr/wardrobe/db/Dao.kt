@@ -27,4 +27,7 @@ interface OutfitDao{
     @Query("select * from outfit")
     fun getAll(): LiveData<List<Outfit>>
 
+    @Delete
+    fun deleteOutFit(outfit: Outfit)
+
 }

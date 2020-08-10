@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.ThreadPoolExecutor
 
 class HomeViewModel(application: Application) : AndroidViewModel(application){
 
@@ -15,6 +17,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application){
     val topWare:LiveData<List<Ware>>
     val bottomWare : LiveData<List<Ware>>
     val outfit : LiveData<List<Outfit>>
+    val randomOutFitIndex:MutableLiveData<Pair<Int,Int>> = MutableLiveData()
 
     init {
         topWare = repo.getTopWare()
@@ -24,7 +27,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application){
 
     fun saveOutfitCombination(topWareIndex: Int, bottomWareIndex: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            if(topWare.value != null && bottomWare.value != null){
+            if(!topWare.value.isNullOrEmpty() && !bottomWare.value.isNullOrEmpty()){
                 repo.saveOutFit(Outfit(
                     topWare = (topWare.value as ArrayList)[topWareIndex].wareId,
                     bottomWare = (bottomWare.value as ArrayList)[bottomWareIndex].wareId
@@ -33,9 +36,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application){
         }
     }
 
-    fun getRandomOutFitCombination(): Outfit? {
-        //todo Implement
-        return null
+    fun setRandomOutFit() {
+        if(!topWare.value.isNullOrEmpty() && !bottomWare.value.isNullOrEmpty()){
+            val topIndex = getRandomInt(topWare.value?.size ?: 0 )
+            val bottomIndex = getRandomInt(bottomWare.value?.size ?: 0 )
+            randomOutFitIndex.value = Pair(topIndex,bottomIndex)
+        }
+    }
+
+
+    fun getRandomInt(exclusiveBound:Int): Int {
+        return ThreadLocalRandom.current().nextInt(0,exclusiveBound)
     }
 
     fun saveWare(ware: Ware) {
@@ -54,6 +65,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application){
                     it.bottomWare == (bottomWare.value as ArrayList)[bottomIndex].wareId
         }
         return (output?.size ?: 0) > 0
+    }
+
+    fun deleteOutFitCombination(topIndex: Int, bottomIndex: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val output = outfit.value?.filter {
+                it.topWare == (topWare.value as ArrayList)[topIndex].wareId
+                        &&
+                        it.bottomWare == (bottomWare.value as ArrayList)[bottomIndex].wareId
+            }
+            output?.let{
+                if(output.isNotEmpty()){
+                    repo.deleteOutFit(output[0])
+                }
+            }
+        }
     }
 
 
